@@ -49,9 +49,9 @@ function Terminate(code)
 function Stop(input, output, before, after)
 {
     // Gracefully close all handles
-    istream.close();
-    ostream.flush();
-    ostream.close();
+    input.close();
+    output.flush();
+    output.close();
 
     // Notify finish
     if (after) after();
