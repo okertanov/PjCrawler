@@ -131,11 +131,19 @@ function Process(url, next)
         page.settings.userAgent = UA;
         page.viewportSize = { width: 1280, height: 1024 };
 
-        page.onError = function(msg, trace) {
-            // ERR('___ Page Error: ' + url + ' with ' + msg);
+        var OnError = function(msg, trace)
+        {
         };
 
-        page.open(Normalize(url), function(status) {
+        var OnTimeout = function()
+        {
+            OnFinished('timeout');
+        };
+
+        var OnFinished = function(status) {
+            // Reset timeout timer
+            window.clearTimeout(timeout);
+
             // Increment overall operation counter
             Process.counter += 1;
 
@@ -143,7 +151,7 @@ function Process(url, next)
             if ( status == 'success' )
             {
                 var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                page.render(name);
+                //page.render(name);
                 LOG('\t' + Process.counter +'\t' + 'OK ' + url);
             }
             else
@@ -152,9 +160,15 @@ function Process(url, next)
             }
 
             page.release();
+            page = null;
 
             next();
-        });
+        };
+
+        page.timeout = window.setTimeout(OnTimeout, 5000);
+        page.onError = OnError;
+        page.onLoadFinished = OnFinished;
+        page.open(Normalize(url));
 
     }
     catch(e)
