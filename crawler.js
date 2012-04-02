@@ -21,6 +21,8 @@ const   logPrefix   = '\tCrawler: ',
 const   LOG = function() { console.log.apply(console, Array.prototype.slice.call(arguments));   },
         ERR = function() { console.error.apply(console, Array.prototype.slice.call(arguments)); };
 
+const   DEF_WORKERS = 4;
+
 // Functions
 function Configure(phantom)
 {
@@ -28,26 +30,6 @@ function Configure(phantom)
     var rc = phantom.injectJs('phantom-inject.js');
     if ( !rc )
         throw 'phantom.injectJs failed.';
-}
-
-function Normalize(url)
-{
-    if ( 0 > url.indexOf('://') )
-    {
-        url = 'http://' + url;
-    }
-
-    return url;
-}
-
-function Terminate(code)
-{
-    // Terminate PhantomJS
-    phantom.exit(code);
-}
-
-function Stop(input, output, before, after)
-{
 }
 
 function Start(input, output, before, after)
@@ -59,135 +41,155 @@ function Start(input, output, before, after)
     if ( !fs.exists(input) && !fs.isFile(input) )
         throw 'Can\'t open for read ' + input;
 
-    var istream = fs.open(input, 'r');
-    var ostream = fs.open(output, 'w');
+    // Context
+    var context =
+    {
+        workers:  DEF_WORKERS,
+        istream:  fs.open(input, 'r'),
+        ostream:  fs.open(output, 'w'),
+        before:   before,
+        after:    after,
+        counter:  0,
+        finished: 0
+    };
 
     if ( !fs.exists(output) && !fs.isFile(output) )
         throw 'Can\'t open for write ' + output;
 
+    // Run the 1st aspect
     if (before) before();
 
-    // Number of workers
-    Start.workers = 4;
-
-    // Fork workers
-    for (var i=0; i < Start.workers ;i++)
+    // Create workers
+    for (var i=0; i < context.workers ;i++)
     {
-        Next(i, istream, ostream, after);
+        (new Worker(i+1, context)).Start();
     }
 }
 
-function Next(id, istream, ostream, after)
+var Worker = function(id, ctx)
 {
-    var line = null;
-    if ( line = istream.readLine() )
+    function Normalize(url)
     {
-        if ( line.length )
-        {
-            setTimeout(function () {
-                Process(line, function(){ Next(id, istream, ostream, after); });
-            }, 10); // 10 msec
-        }
+        if ( 0 > url.indexOf('://') )
+            return ('http://' + url);
     }
-    else
-    {
-        LOG(logPrefix + 'Worker: ' + id + ' reached the end of list.');
 
-        // Increment finished pool
-        if ( typeof Next.finished == 'undefined' )
-                    Next.finished = 0;
-        Next.finished += 1;
-
-        // Wait when all workers are done
-        if ( Next.finished >= Start.workers && typeof Next.timeout == 'undefined' )
+    return {
+        id:   id,
+        ctx:  ctx,
+        Start: function()
         {
-            LOG(logPrefix + 'Worker: ' + id + ' Scheduling finalization...');
+            LOG(logPrefix + 'Worker: ' + this.id + ' started.');
 
-            // Delayed Finalization
-            Next.timeout = setTimeout(function () {
-                // Gracefully close all handles
-                istream.close();
-                ostream.flush();
-                ostream.close();
-
-                // Notify finish
-                if (after) after();
-
-                // Exit
-                Terminate(0);
-            }, 1000); // 1 sec
-        }
-    }
-}
-
-function Process(url, next)
-{
-    try
-    {
-        var page = webpage.create();
-        page.settings.userAgent = UA;
-        page.viewportSize = { width: 800, height: 600 };
-
-        var OnError = function(msg, trace)
+            return this.Next();
+        },
+        Next: function()
         {
-        };
+            var line = this.ctx.istream.readLine();
+            if ( line )
+            {
+                if ( line.length )
+                {
+                    setTimeout((function (obj) {
+                        return function(){ obj.Process(line, obj, function(){ obj.Next(); }) };
+                    })(this), 10);
+                }
+            }
+            else
+            {
+                LOG(logPrefix + 'Worker: ' + this.id + ' reached the end of list.');
 
-        var OnTimeout = function()
-        {
-            OnFinished.call(page, 'timeout');
-        };
+                // Increment finished pool
+                this.ctx.finished += 1;
 
-        var OnFinished = function(status)
+                // Wait when all workers are done
+                if ( this.ctx.finished >= this.ctx.workers )
+                {
+                    LOG(logPrefix + 'Worker: ' + this.id + ' Scheduling finalization...');
+
+                    // Gracefully close all handles
+                    this.ctx.ostream.flush(), this.ctx.ostream.close(), this.ctx.istream.close();
+
+                    // Notify finish
+                    if (this.ctx.after) this.ctx.after();
+
+                    // Exit
+                    phantom.exit(0);
+                }
+            }
+
+            return this;
+        },
+        Process: function(url, obj, next)
         {
             try
             {
-                // Sanity
-                if ( typeof page == 'undefined' || !page )
+                if ( typeof obj.page != 'undefined' && obj.page )
                 {
-                    throw "page object is undefined";
+                    obj.page.release(), obj.page = null;
                 }
 
-                // Reset timeout timer
-                clearTimeout(timeout);
+                obj.page = webpage.create();
+                obj.page.settings.userAgent = UA;
+                obj.page.viewportSize = { width: 800, height: 600 };
 
-                // Increment overall operation counter
-                if ( typeof Process.counter == 'undefined' )
-                    Process.counter = 0;
-                Process.counter += 1;
-
-                // Is succeeded
-                if ( status == 'success' )
+                var OnError = function(msg, trace)
                 {
-                    var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                    page.render(name);
-                    LOG('\t' + Process.counter +'\t' + 'OK ' + url);
-                }
-                else
-                {
-                    LOG('\t' + Process.counter +'\t' + status + ' ' + url);
-                }
+                };
 
-                /*page.release();
-                page = null;*/
+                var OnTimeout = function()
+                {
+                    OnFinished.call(obj.page, 'timeout');
+                };
+
+                var OnFinished = function(status)
+                {
+                    try
+                    {
+                        // Sanity
+                        if ( typeof obj.page == 'undefined' || !obj.page )
+                        {
+                            throw "page object is undefined";
+                        }
+
+                        // Reset timeout timer
+                        clearTimeout(timeout);
+
+                        // Increment overall operation counter
+                        obj.ctx.counter += 1;
+
+                        // Is succeeded
+                        if ( status == 'success' )
+                        {
+                            var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
+                            obj.page.render(name);
+                            LOG('\t' + obj.ctx.counter +'\t' + 'OK ' + url);
+                        }
+                        else
+                        {
+                            LOG('\t' + obj.ctx.counter +'\t' + status + ' ' + url);
+                        }
+                    }
+                    catch(e)
+                    {
+                        ERR('>>> Processing internal exception: ' + url + ' with ' + e);
+                    }
+
+                    // Continue iterations
+                    next();
+                };
+
+                var timeout = setTimeout(OnTimeout, 5000);
+                obj.page.onError = OnError;
+                obj.page.onLoadFinished = OnFinished;
+                obj.page.open(Normalize(url));
             }
             catch(e)
             {
-                ERR('>>> Processing internal exception: ' + url + ' with ' + e);
+                ERR('>>> Processing exception: ' + url + ' with ' + e);
             }
-
-            // Continue
-            next();
-        };
-
-        var timeout = setTimeout(OnTimeout, 5000);
-        page.onError = OnError;
-        page.onLoadFinished = OnFinished;
-        page.open(Normalize(url));
-    }
-    catch(e)
-    {
-        ERR('>>> Processing exception: ' + url + ' with ' + e);
-    }
+        }
+    };
 }
 
 function Arguments(phantom, system)
@@ -248,7 +250,7 @@ function Main()
     catch(e)
     {
         ERR(errorPrefix + e);
-        Terminate(1);
+        phantom.exit(1);
     }
 }
 
