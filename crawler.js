@@ -88,7 +88,9 @@ function Next(id, istream, ostream, after)
     {
         if ( line.length )
         {
-            Process(line, function(){ Next(id, istream, ostream, after); });
+            setTimeout(function () {
+                Process(line, function(){ Next(id, istream, ostream, after); });
+            }, 20); // 20 msec
         }
     }
     else
@@ -104,7 +106,7 @@ function Next(id, istream, ostream, after)
             LOG(logPrefix + 'Worker: ' + id + ' Scheduling finalization...');
 
             // Delayed Finalization
-            Next.timeout = window.setTimeout(function () {
+            Next.timeout = setTimeout(function () {
                 // Gracefully close all handles
                 istream.close();
                 ostream.flush();
@@ -122,13 +124,12 @@ function Next(id, istream, ostream, after)
 
 function Process(url, next)
 {
-    var page = null;
-
     try
     {
+        var page = null;
         page = webpage.create();
         page.settings.userAgent = UA;
-        page.viewportSize = { width: 1280, height: 1024 };
+        page.viewportSize = { width: 800, height: 600 };
 
         var OnError = function(msg, trace)
         {
@@ -141,7 +142,7 @@ function Process(url, next)
 
         var OnFinished = function(status) {
             // Reset timeout timer
-            window.clearTimeout(page.timeout);
+            clearTimeout(page.timeout);
 
             // Increment overall operation counter
             Process.counter += 1;
@@ -164,11 +165,10 @@ function Process(url, next)
             next();
         };
 
-        page.timeout = window.setTimeout(OnTimeout, 5000);
+        page.timeout = setTimeout(OnTimeout, 5000);
         page.onError = OnError;
         page.onLoadFinished = OnFinished;
         page.open(Normalize(url));
-
     }
     catch(e)
     {
@@ -203,14 +203,17 @@ function Arguments(phantom, system)
 
 function Main()
 {
+    // Now time
+    start = new Date();
+
     // Prologue
-    var Before = function(start)
+    var Before = function()
     {
         LOG(logPrefix + 'starting at: ' + start);
     }
 
     // Epilogue
-    var After = function(start)
+    var After = function()
     {
         var end = new Date();
         var diff = Math.ceil((end.getTime() - start.getTime()) / 1000 / 60);
@@ -226,7 +229,7 @@ function Main()
         // Configure(phantom);
 
         // Start the Crawler asyncroniously
-        Start(files.input, files.output, function(){ Before(new Date()) }, function(){ After(new Date()) });
+        Start(files.input, files.output, function(){ Before() }, function(){ After() });
     }
     catch(e)
     {
