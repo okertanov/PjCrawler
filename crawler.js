@@ -126,7 +126,8 @@ var Worker = function(id, ctx)
             {
                 if ( typeof obj.page != 'undefined' && obj.page )
                 {
-                    obj.page.release(), obj.page = null;
+                    /*obj.page.release(), obj.page = null;*/
+                    delete obj.page;
                 }
 
                 obj.page = webpage.create();
@@ -146,14 +147,8 @@ var Worker = function(id, ctx)
                 {
                     try
                     {
-                        // Sanity
-                        if ( typeof obj.page == 'undefined' || !obj.page )
-                        {
-                            throw "page object is undefined";
-                        }
-
                         // Reset timeout timer
-                        clearTimeout(timeout);
+                        clearTimeout(obj.timeout);
 
                         // Increment overall operation counter
                         obj.ctx.counter += 1;
@@ -179,7 +174,7 @@ var Worker = function(id, ctx)
                     next();
                 };
 
-                var timeout = setTimeout(OnTimeout, 5000);
+                obj.timeout = setTimeout(OnTimeout, 5000);
                 obj.page.onError = OnError;
                 obj.page.onLoadFinished = OnFinished;
                 obj.page.open(Normalize(url));
