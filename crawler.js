@@ -70,10 +70,6 @@ function Start(input, output, before, after)
     // Number of workers
     Start.workers = 4;
 
-    // Reset state
-    Process.counter = 0;
-    Next.finished = 0;
-
     // Fork workers
     for (var i=0; i < Start.workers ;i++)
     {
@@ -90,7 +86,7 @@ function Next(id, istream, ostream, after)
         {
             setTimeout(function () {
                 Process(line, function(){ Next(id, istream, ostream, after); });
-            }, 20); // 20 msec
+            }, 10); // 10 msec
         }
     }
     else
@@ -98,6 +94,8 @@ function Next(id, istream, ostream, after)
         LOG(logPrefix + 'Worker: ' + id + ' reached the end of list.');
 
         // Increment finished pool
+        if ( typeof Next.finished == 'undefined' )
+                    Next.finished = 0;
         Next.finished += 1;
 
         // Wait when all workers are done
@@ -139,32 +137,49 @@ function Process(url, next)
             OnFinished.call(page, 'timeout');
         };
 
-        var OnFinished = function(status) {
-            // Reset timeout timer
-            clearTimeout(page.timeout);
-
-            // Increment overall operation counter
-            Process.counter += 1;
-
-            // Is succeeded
-            if ( status == 'success' )
+        var OnFinished = function(status)
+        {
+            try
             {
-                var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                //page.render(name);
-                LOG('\t' + Process.counter +'\t' + 'OK ' + url);
+                // Sanity
+                if ( typeof page == 'undefined' || !page )
+                {
+                    throw "page object is undefined";
+                }
+
+                // Reset timeout timer
+                clearTimeout(timeout);
+
+                // Increment overall operation counter
+                if ( typeof Process.counter == 'undefined' )
+                    Process.counter = 0;
+                Process.counter += 1;
+
+                // Is succeeded
+                if ( status == 'success' )
+                {
+                    var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
+                    page.render(name);
+                    LOG('\t' + Process.counter +'\t' + 'OK ' + url);
+                }
+                else
+                {
+                    LOG('\t' + Process.counter +'\t' + status + ' ' + url);
+                }
+
+                /*page.release();
+                page = null;*/
             }
-            else
+            catch(e)
             {
-                LOG('\t' + Process.counter +'\t' + status + ' ' + url);
+                ERR('>>> Processing internal exception: ' + url + ' with ' + e);
             }
 
-            /*page.release();
-            page = null;*/
-
+            // Continue
             next();
         };
 
-        page.timeout = setTimeout(OnTimeout, 5000);
+        var timeout = setTimeout(OnTimeout, 5000);
         page.onError = OnError;
         page.onLoadFinished = OnFinished;
         page.open(Normalize(url));
