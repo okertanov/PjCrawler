@@ -2,10 +2,6 @@
     "ignoreSslErrors"           :   true,
     "loadImages"                :   true,
     "webSecurity"               :   false,
-    "localToRemoteUrlAccess"    :   true,
-
-    {
-        "legal": "Copyright (C) 2012 Oleg Kertanov <okertanov@gmail.com> All Rights Reserved."
-    }
+    "localToRemoteUrlAccess"    :   true
 }
 
