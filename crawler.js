@@ -126,8 +126,7 @@ function Process(url, next)
 {
     try
     {
-        var page = null;
-        page = webpage.create();
+        var page = webpage.create();
         page.settings.userAgent = UA;
         page.viewportSize = { width: 800, height: 600 };
 
@@ -159,8 +158,8 @@ function Process(url, next)
                 LOG('\t' + Process.counter +'\t' + status + ' ' + url);
             }
 
-            page.release();
-            page = null;
+            /*page.release();
+            page = null;*/
 
             next();
         };
