@@ -137,12 +137,12 @@ function Process(url, next)
 
         var OnTimeout = function()
         {
-            OnFinished('timeout');
+            OnFinished.call(page, 'timeout');
         };
 
         var OnFinished = function(status) {
             // Reset timeout timer
-            window.clearTimeout(timeout);
+            window.clearTimeout(page.timeout);
 
             // Increment overall operation counter
             Process.counter += 1;
