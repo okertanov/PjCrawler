@@ -48,16 +48,6 @@ function Terminate(code)
 
 function Stop(input, output, before, after)
 {
-    // Gracefully close all handles
-    input.close();
-    output.flush();
-    output.close();
-
-    // Notify finish
-    if (after) after();
-
-    // Exit
-    Terminate(0);
 }
 
 function Start(input, output, before, after)
@@ -115,7 +105,16 @@ function Next(id, istream, ostream, after)
 
             // Delayed Finalization
             Next.timeout = window.setTimeout(function () {
-                Stop(id, istream, ostream, null, after);
+                // Gracefully close all handles
+                istream.close();
+                ostream.flush();
+                ostream.close();
+
+                // Notify finish
+                if (after) after();
+
+                // Exit
+                Terminate(0);
             }, 1000); // 1 sec
         }
     }
