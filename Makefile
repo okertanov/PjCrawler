@@ -7,6 +7,8 @@ DATA=data
 
 PJ=phantomjs
 PJ_OPTS=--cookies-file=$(DATA)/cookies.txt --config=config.json \
+        --ignore-ssl-errors=yes --load-images=yes \
+        --local-to-remote-url-access=yes --web-security=yes \
         --disk-cache=yes --max-disk-cache-size=409600
 
 SCRIPT=crawler.js

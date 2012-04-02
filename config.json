@@ -1,7 +1,3 @@
 {
-    "ignoreSslErrors"           :   true,
-    "loadImages"                :   true,
-    "webSecurity"               :   false,
-    "localToRemoteUrlAccess"    :   true
 }
 

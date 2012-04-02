@@ -143,7 +143,7 @@ function Process(url, next)
             if ( status == 'success' )
             {
                 var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                //page.render(name);
+                page.render(name);
                 LOG('\t' + Process.counter +'\t' + 'OK ' + url);
             }
             else
