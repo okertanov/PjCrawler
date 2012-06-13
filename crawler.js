@@ -91,7 +91,7 @@ var Worker = function(id, ctx)
                 if ( line.length )
                 {
                     setTimeout((function (obj) {
-                        return function(){ obj.Process(line, obj, function(){ obj.Next(); }) };
+                        return function(){ obj.Process.call(obj, line) };
                     })(this), 10);
                 }
             }
@@ -120,27 +120,29 @@ var Worker = function(id, ctx)
 
             return this;
         },
-        Process: function(url, obj, next)
+        Process: function(url)
         {
             try
             {
-                if ( typeof obj.page != 'undefined' && obj.page )
+                if ( typeof this.page != 'undefined' && this.page )
                 {
                     /*obj.page.release(), obj.page = null;*/
-                    delete obj.page;
+                    delete this.page;
                 }
 
-                obj.page = webpage.create();
-                obj.page.settings.userAgent = UA;
-                obj.page.viewportSize = { width: 800, height: 600 };
+                this.page = webpage.create();
+                this.page.settings.userAgent = UA;
+                this.page.viewportSize = { width: 800, height: 600 };
 
                 var OnError = function(msg, trace)
                 {
                 };
 
+                var $this = this;
+
                 var OnTimeout = function()
                 {
-                    OnFinished.call(obj.page, 'timeout');
+                    OnFinished.call($this.page, 'timeout');
                 };
 
                 var OnFinished = function(status)
@@ -148,21 +150,21 @@ var Worker = function(id, ctx)
                     try
                     {
                         // Reset timeout timer
-                        clearTimeout(obj.timeout);
+                        clearTimeout($this.timeout);
 
                         // Increment overall operation counter
-                        obj.ctx.counter += 1;
+                        $this.ctx.counter += 1;
 
                         // Is succeeded
                         if ( status == 'success' )
                         {
                             var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                            obj.page.render(name);
-                            LOG('\t' + obj.ctx.counter +'\t' + 'OK ' + url);
+                            $this.page.render(name);
+                            LOG('\t' + $this.ctx.counter +'\t' + 'OK ' + url);
                         }
                         else
                         {
-                            LOG('\t' + obj.ctx.counter +'\t' + status + ' ' + url);
+                            LOG('\t' + $this.ctx.counter +'\t' + status + ' ' + url);
                         }
                     }
                     catch(e)
@@ -171,13 +173,13 @@ var Worker = function(id, ctx)
                     }
 
                     // Continue iterations
-                    next();
+                    $this.Next();
                 };
 
-                obj.timeout = setTimeout(OnTimeout, 5000);
-                obj.page.onError = OnError;
-                obj.page.onLoadFinished = OnFinished;
-                obj.page.open(Normalize(url));
+                this.timeout = setTimeout(OnTimeout, 5000);
+                this.page.onError = OnError;
+                this.page.onLoadFinished = OnFinished;
+                this.page.open(Normalize(url));
             }
             catch(e)
             {
