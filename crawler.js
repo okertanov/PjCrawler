@@ -72,7 +72,7 @@ var Worker = function(id, ctx)
 {
     function Normalize(url)
     {
-        if ( 0 > url.indexOf('://') )
+        if ( url.indexOf('://') < 0 )
             return ('http://' + url);
     }
 
@@ -92,9 +92,7 @@ var Worker = function(id, ctx)
             {
                 if ( line.length )
                 {
-                    setTimeout((function (obj) {
-                        return function(){ obj.Process.call(obj, line) };
-                    })(this), 10);
+                    this.Process.call(this, line);
                 }
             }
             else
@@ -122,6 +120,43 @@ var Worker = function(id, ctx)
 
             return this;
         },
+        OnPageError: function(msg, trace)
+        {
+        },
+        OnTimeout: function()
+        {
+            this.OnFinished.call(this, 'timeout');
+        },
+        OnFinished: function(status)
+        {
+            try
+            {
+                // Reset timeout timer
+                clearTimeout(this.timeout);
+
+                // Increment overall operation counter
+                this.ctx.counter += 1;
+
+                // Is succeeded
+                if ( status == 'success' )
+                {
+                    var name = 'images/' + /\w+\.\w+/.exec(this.url) + '-' + (+new Date()) + '.png';
+                    //this.page.render(name);
+                    LOG('\t' + this.ctx.counter +'\t' + 'OK(' + this.id + ') ' + this.url);
+                }
+                else
+                {
+                    LOG('\t' + this.ctx.counter +'\t' + status + '(' + this.id + ') ' + this.url);
+                }
+            }
+            catch(e)
+            {
+                ERR('>>> Processing internal exception: ' + this.url + ' with ' + e);
+            }
+
+            // Continue iterations
+            this.Next();
+        },
         Process: function(url)
         {
             try
@@ -132,56 +167,19 @@ var Worker = function(id, ctx)
                     delete this.page;
                 }
 
+                this.url = url;
                 this.page = webpage.create();
                 this.page.settings.userAgent = UA;
                 this.page.viewportSize = { width: 800, height: 600 };
 
-                var OnError = function(msg, trace)
-                {
-                };
+                var that = this;
 
-                var $this = this;
+                this.page.onError = function(msg, trace){ that.OnPageError.call(that, msg, trace) };
+                this.page.onLoadFinished = function(status){ that.OnFinished.call(that, status) };
 
-                var OnTimeout = function()
-                {
-                    OnFinished.call($this.page, 'timeout');
-                };
+                this.page.open( Normalize(this.url) );
 
-                var OnFinished = function(status)
-                {
-                    try
-                    {
-                        // Reset timeout timer
-                        clearTimeout($this.timeout);
-
-                        // Increment overall operation counter
-                        $this.ctx.counter += 1;
-
-                        // Is succeeded
-                        if ( status == 'success' )
-                        {
-                            var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                            //$this.page.render(name);
-                            LOG('\t' + $this.ctx.counter +'\t' + 'OK(' + $this.id + ') ' + url);
-                        }
-                        else
-                        {
-                            LOG('\t' + $this.ctx.counter +'\t' + status + '(' + $this.id + ') ' + url);
-                        }
-                    }
-                    catch(e)
-                    {
-                        ERR('>>> Processing internal exception: ' + url + ' with ' + e);
-                    }
-
-                    // Continue iterations
-                    $this.Next();
-                };
-
-                this.timeout = setTimeout(OnTimeout, DEF_TIMEOUT);
-                this.page.onError = OnError;
-                this.page.onLoadFinished = OnFinished;
-                this.page.open(Normalize(url));
+                this.timeout = setTimeout(function(){ that.OnTimeout.call(that) }, DEF_TIMEOUT);
             }
             catch(e)
             {
