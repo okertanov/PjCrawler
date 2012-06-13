@@ -24,6 +24,7 @@ const   LOG = function() { console.log.apply(console, Array.prototype.slice.call
 const   DEF_WORKERS = 4;
 
 const   DEF_TIMEOUT = 60000;
+const   DEF_MINDELAY = 35;
 
 // Functions
 function Configure(phantom)
@@ -83,7 +84,38 @@ var Worker = function(id, ctx)
         {
             LOG(logPrefix + 'Worker: ' + this.id + ' started.');
 
-            return this.Next();
+            var that = this;
+            return setTimeout( function(){ that.Next.call(that) }, DEF_MINDELAY );
+        },
+        Stop: function()
+        {
+            LOG(logPrefix + 'Worker: ' + this.id + ' stopping everything.');
+
+            // Gracefully close all handles
+            this.ctx.ostream.flush(),
+                this.ctx.ostream.close(),
+                    this.ctx.istream.close();
+
+            // Notify finish
+            if ( typeof this.ctx.after === 'function' )
+                this.ctx.after();
+
+            this.Cleanup();
+
+            // Exit
+            phantom.exit(0);
+        },
+        Cleanup: function()
+        {
+            // Reset timeout timer
+            clearTimeout(this.timeout);
+
+            // Delete page object
+            if ( typeof this.page != 'undefined' && this.page )
+            {
+                /*obj.page.release(), obj.page = null;*/
+                delete this.page;
+            }
         },
         Next: function()
         {
@@ -97,7 +129,7 @@ var Worker = function(id, ctx)
             }
             else
             {
-                LOG(logPrefix + 'Worker: ' + this.id + ' reached the end of list.');
+                LOG(logPrefix + 'Worker: ' + this.id + ' reached the end of list with ' + this.url);
 
                 // Increment finished pool
                 this.ctx.finished += 1;
@@ -105,16 +137,9 @@ var Worker = function(id, ctx)
                 // Wait when all workers are done
                 if ( this.ctx.finished >= this.ctx.workers )
                 {
-                    LOG(logPrefix + 'Worker: ' + this.id + ' Scheduling finalization...');
+                    LOG(logPrefix + 'Worker: ' + this.id + ' Scheduling finalization... with ' + this.url);
 
-                    // Gracefully close all handles
-                    this.ctx.ostream.flush(), this.ctx.ostream.close(), this.ctx.istream.close();
-
-                    // Notify finish
-                    if (this.ctx.after) this.ctx.after();
-
-                    // Exit
-                    phantom.exit(0);
+                    this.Stop();
                 }
             }
 
@@ -131,8 +156,7 @@ var Worker = function(id, ctx)
         {
             try
             {
-                // Reset timeout timer
-                clearTimeout(this.timeout);
+                this.Cleanup();
 
                 // Increment overall operation counter
                 this.ctx.counter += 1;
@@ -161,11 +185,7 @@ var Worker = function(id, ctx)
         {
             try
             {
-                if ( typeof this.page != 'undefined' && this.page )
-                {
-                    /*obj.page.release(), obj.page = null;*/
-                    delete this.page;
-                }
+                this.Cleanup();
 
                 this.url = url;
                 this.page = webpage.create();
@@ -243,6 +263,7 @@ function Main()
 
         // Start the Crawler asyncroniously
         Start(files.input, files.output, function(){ Before() }, function(){ After() });
+        LOG(logPrefix + 'System started.');
     }
     catch(e)
     {
