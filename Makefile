@@ -30,6 +30,7 @@ $(MODULE): $(SCRIPT)
 
 clean:
 	-@rm -f $(DATA)/social-bugs-database-*.csv images/*.png logfile-*.log
+	-@git checkout data/cookies.txt
 
 .PHONY: clean all
 

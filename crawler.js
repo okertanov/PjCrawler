@@ -23,6 +23,8 @@ const   LOG = function() { console.log.apply(console, Array.prototype.slice.call
 
 const   DEF_WORKERS = 4;
 
+const   DEF_TIMEOUT = 60000;
+
 // Functions
 function Configure(phantom)
 {
@@ -176,7 +178,7 @@ var Worker = function(id, ctx)
                     $this.Next();
                 };
 
-                this.timeout = setTimeout(OnTimeout, 5000);
+                this.timeout = setTimeout(OnTimeout, DEF_TIMEOUT);
                 this.page.onError = OnError;
                 this.page.onLoadFinished = OnFinished;
                 this.page.open(Normalize(url));
