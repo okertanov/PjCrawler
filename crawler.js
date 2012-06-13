@@ -161,12 +161,12 @@ var Worker = function(id, ctx)
                         if ( status == 'success' )
                         {
                             var name = 'images/' + /\w+\.\w+/.exec(url) + '-' + (+new Date()) + '.png';
-                            $this.page.render(name);
-                            LOG('\t' + $this.ctx.counter +'\t' + 'OK ' + url);
+                            //$this.page.render(name);
+                            LOG('\t' + $this.ctx.counter +'\t' + 'OK(' + $this.id + ') ' + url);
                         }
                         else
                         {
-                            LOG('\t' + $this.ctx.counter +'\t' + status + ' ' + url);
+                            LOG('\t' + $this.ctx.counter +'\t' + status + '(' + $this.id + ') ' + url);
                         }
                     }
                     catch(e)
