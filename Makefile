@@ -21,7 +21,8 @@ ifndef DB
 endif
 LINKS_DB_TYPE=$(DB)
 SCRIPT_INPUT=$(DATA)/www-links-database-$(LINKS_DB_TYPE).csv
-SCRIPT_OPTS=$(SCRIPT_INPUT) $(SCRIPT_OUTPUT)
+SCRIPT_STATE=$(DATA)/state.txt
+SCRIPT_OPTS=$(SCRIPT_INPUT) $(SCRIPT_OUTPUT) $(SCRIPT_STATE)
 
 all: $(MODULE)
 
@@ -29,7 +30,7 @@ $(MODULE): $(SCRIPT)
 	$(PJ) $(PJ_OPTS) $^ $(SCRIPT_OPTS) > $(LOGFILE)
 
 clean:
-	-@rm -f $(DATA)/social-bugs-database-*.csv images/*.png logfile-*.log
+	-@rm -f $(DATA)/social-bugs-database-*.csv $(DATA)/state.txt images/*.png logfile-*.log
 	-@git checkout data/cookies.txt
 
 .PHONY: clean all

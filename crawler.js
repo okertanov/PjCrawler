@@ -21,7 +21,7 @@ const   logPrefix   = '\tCrawler: ',
 const   LOG = function() { console.log.apply(console, Array.prototype.slice.call(arguments));   },
         ERR = function() { console.error.apply(console, Array.prototype.slice.call(arguments)); };
 
-const   DEF_WORKERS = 4;
+const   DEF_WORKERS = 3;
 
 const   DEF_TIMEOUT = 60000;
 const   DEF_MINDELAY = 35;
@@ -35,32 +35,53 @@ function Configure(phantom)
         throw 'phantom.injectJs failed.';
 }
 
-function Start(input, output, before, after)
+function Start(files, before, after)
 {
     // Notify on parameters used
-    LOG(logPrefix + 'Processing links from: ' + '"' + input + '"' +
-                    ', to: ' + '"' + output + '"');
+    LOG(logPrefix + 'Processing links from: ' + '"' + files.input + '"' +
+                    ', to: ' + '"' + files.output + '"' +
+                    ', using state file: ' + '"' + files.state + '".');
 
-    if ( !fs.exists(input) && !fs.isFile(input) )
-        throw 'Can\'t open for read ' + input;
+    if ( !fs.exists(files.input) && !fs.isFile(files.input) )
+        throw 'Can\'t open for read ' + files.input;
 
     // Context
     var context =
     {
         workers:  DEF_WORKERS,
-        istream:  fs.open(input, 'r'),
-        ostream:  fs.open(output, 'w'),
+        istream:  fs.open( files.input,  'r'  ),
+        ostream:  fs.open( files.output, 'w'  ),
+        stfile:   files.state,
         before:   before,
         after:    after,
+        scounter: 0,
         counter:  0,
         finished: 0
     };
 
-    if ( !fs.exists(output) && !fs.isFile(output) )
-        throw 'Can\'t open for write ' + output;
+    if ( !fs.exists(files.output) && !fs.isFile(files.output) )
+        throw 'Can\'t open for write ' + files.output;
 
     // Run the 1st aspect
     if (before) before();
+
+    // Update last state if exists
+    var lastState = 0;
+    if ( fs.exists(context.stfile) && fs.isFile(context.stfile) )
+    {
+        var stateContent = fs.read(context.stfile);
+
+        if ( stateContent && stateContent.length )
+        {
+            lastState = parseInt(stateContent, 10);
+            lastState = (lastState < 0 ? 0 : lastState);
+        }
+    }
+
+    context.scounter = lastState;
+
+    if ( context.scounter > 0 )
+        LOG(logPrefix + 'Recovering session with the state: ' + context.scounter);
 
     // Create workers
     for (var i=0; i < context.workers ;i++)
@@ -119,9 +140,25 @@ var Worker = function(id, ctx)
         },
         Next: function()
         {
-            var line = this.ctx.istream.readLine();
+            var line = null;
+
+            // Skip from the last state (XXX: no skip fn in the phantomjs API)
+            if ( this.ctx.scounter != 0 )
+            {
+                while ( this.ctx.counter < this.ctx.scounter )
+                {
+                    line = this.ctx.istream.readLine();
+                    this.ctx.counter += 1;
+                }
+            }
+
+            // Read the url line
+            line = this.ctx.istream.readLine();
+
+            // Shouldn't be empty (XXX: no isEnd fn in the phantomjs API)
             if ( line )
             {
+                // Process non-empty line
                 if ( line.length )
                 {
                     this.Process.call(this, line);
@@ -172,10 +209,13 @@ var Worker = function(id, ctx)
                 {
                     LOG('\t' + this.ctx.counter +'\t' + status + '(' + this.id + ') ' + this.url);
                 }
+
+                // Update state file
+                fs.write(this.ctx.stfile, '' + this.ctx.counter + '\n', 'w');
             }
             catch(e)
             {
-                ERR('>>> Processing internal exception: ' + this.url + ' with ' + e);
+                ERR('>>> Processing internal exception: ' + this.url + ' with ' + e.toString());
             }
 
             // Continue iterations
@@ -203,7 +243,7 @@ var Worker = function(id, ctx)
             }
             catch(e)
             {
-                ERR('>>> Processing exception: ' + url + ' with ' + e);
+                ERR('>>> Processing exception: ' + url + ' with ' + e.toString());
             }
         }
     };
@@ -211,21 +251,30 @@ var Worker = function(id, ctx)
 
 function Arguments(phantom, system)
 {
-    var files = { script: '', input: '', output: ''};
+    var files = { script: '', input: '', output: '', state: '' };
 
     if ( phantom.args.length <= 1 )
     {
         throw ('No arguments provided. Please read the README.md file.');
     }
-    else if ( phantom.args.length > 2 )
+    else if ( phantom.args.length > 3 )
     {
         throw ('Wrong arguments provided. Please read the README.md file.');
     }
     else
     {
-        files = { script: system.args[0], input: system.args[1], output: system.args[2]};
+        files =
+        {
+            script: system.args[0],
+            input:  system.args[1],
+            output: system.args[2],
+            state:  system.args[3]
+        };
 
-        if ( !files.script || !files.input || !files.output )
+        if (    !files.script.length ||
+                !files.input.length  ||
+                !files.output.length ||
+                !files.state.length     )
         {
             throw ('Arguments couldn\'t be empty. Please read the README.md file.');
         }
@@ -262,12 +311,12 @@ function Main()
         // Configure(phantom);
 
         // Start the Crawler asyncroniously
-        Start(files.input, files.output, function(){ Before() }, function(){ After() });
+        Start(files, function(){ Before() }, function(){ After() });
         LOG(logPrefix + 'System started.');
     }
     catch(e)
     {
-        ERR(errorPrefix + e);
+        ERR(errorPrefix + e.toString());
         phantom.exit(1);
     }
 }
