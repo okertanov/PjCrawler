@@ -27,7 +27,10 @@ SCRIPT_OPTS=$(SCRIPT_INPUT) $(SCRIPT_OUTPUT) $(SCRIPT_STATE)
 all: $(MODULE)
 
 $(MODULE): $(SCRIPT)
-	$(PJ) $(PJ_OPTS) $^ $(SCRIPT_OPTS) > $(LOGFILE)
+	while true ; do \
+		$(PJ) $(PJ_OPTS) $^ $(SCRIPT_OPTS) > $(LOGFILE) ;\
+		[ $$? -eq 0 ] && break; \
+	done
 
 clean:
 	-@rm -f $(DATA)/social-bugs-database-*.csv $(DATA)/state.txt images/*.png logfile-*.log
