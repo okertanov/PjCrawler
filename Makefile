@@ -34,7 +34,7 @@ $(MODULE): $(SCRIPT)
 	done
 
 clean:
-	-@rm -f $(DATA)/social-bugs-database-*.csv $(DATA)/state.txt images/*.png logfile-*.log
+	-@rm -f $(DATA)/state.txt images/*.png logfile-*.log
 	-@git checkout data/cookies.txt
 
 .PHONY: clean all
