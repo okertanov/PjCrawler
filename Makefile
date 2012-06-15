@@ -17,10 +17,9 @@ DATE_NOW=$(shell date +'%y.%m.%d-%H.%M.%S')
 SCRIPT_OUTPUT=$(DATA)/social-bugs-database-$(DATE_NOW).csv
 LOGFILE=logfile-$(DATE_NOW).log
 ifndef DB
-    DB=debug
+    DB=$(DATA)/www-links-database-debug.csv
 endif
-LINKS_DB_TYPE=$(DB)
-SCRIPT_INPUT=$(DATA)/www-links-database-$(LINKS_DB_TYPE).csv
+SCRIPT_INPUT=$(DB)
 SCRIPT_STATE=$(DATA)/state.txt
 BUGS_DB=$(DATA)/bugsdb-update-14.06.2012.js
 SCRIPT_OPTS=$(BUGS_DB) $(SCRIPT_INPUT) $(SCRIPT_OUTPUT) $(SCRIPT_STATE)
