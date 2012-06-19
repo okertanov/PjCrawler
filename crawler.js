@@ -331,9 +331,9 @@ var Worker = function(id, ctx)
                 this.page.onLoadFinished = function(status){ that.OnFinished.call(that, status, url) };
                 this.page.onResourceRequested = function(req){ that.OnResource.call(that, req, url) };
 
-                this.page.open( Normalize(this.url) );
-
                 this.timeout = setTimeout(function(){ that.OnTimeout.call(that) }, DEF_PAGE_TIMEOUT);
+
+                this.page.open( Normalize(this.url) );
             }
             catch(e)
             {
