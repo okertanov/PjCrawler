@@ -241,10 +241,11 @@ var Worker = function(id, ctx)
         },
         OnPageError: function(msg, trace)
         {
+            return true;
         },
         OnTimeout: function()
         {
-            this.OnFinished.call(this, 'timeout');
+            return this.OnFinished.call(this, 'timeout');
         },
         OnFinished: function(status, url)
         {
@@ -285,6 +286,8 @@ var Worker = function(id, ctx)
 
             // Continue iterations
             this.Next();
+
+            return true;
         },
         OnResource: function(req, url)
         {
@@ -313,6 +316,12 @@ var Worker = function(id, ctx)
             {
                 ERR('>>> OnResource internal exception with ' + e.toString());
             }
+
+            return true;
+        },
+        OnAlertMessage: function(msg)
+        {
+            return false;
         },
         Process: function(url)
         {
@@ -330,6 +339,10 @@ var Worker = function(id, ctx)
                 this.page.onError = function(msg, trace){ that.OnPageError.call(that, msg, trace) };
                 this.page.onLoadFinished = function(status){ that.OnFinished.call(that, status, url) };
                 this.page.onResourceRequested = function(req){ that.OnResource.call(that, req, url) };
+
+                this.page.onAlert   = function(msg){ that.OnAlertMessage.call(that, msg) };
+                this.page.onPrompt  = function(msg){ that.OnAlertMessage.call(that, msg) };
+                this.page.onConfirm = function(msg){ that.OnAlertMessage.call(that, msg) };
 
                 this.timeout = setTimeout(function(){ that.OnTimeout.call(that) }, DEF_PAGE_TIMEOUT);
 
