@@ -321,6 +321,7 @@ var Worker = function(id, ctx)
         },
         OnAlertMessage: function(msg)
         {
+            LOG('\t' + this.ctx.counter +'\t' + 'Modal message: ' + msg + '(' + this.id + ') ' + this.url);
             return false;
         },
         Process: function(url)
@@ -481,7 +482,7 @@ function Main()
 
         // Start the Crawler asyncroniously
         Start(files, function(){ Before() }, function(){ After() });
-        LOG(logPrefix + 'System started (ver.1.1)');
+        LOG(logPrefix + 'System started (ver.1.2)');
     }
     catch(e)
     {
