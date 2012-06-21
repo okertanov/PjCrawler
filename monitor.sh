@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 #    Copyright (C) 2012 Oleg Kertanov <okertanov@gmail.com>
@@ -84,8 +84,11 @@ function send_notify()
 #
 function check_process_exists()
 {
-    local EXISTS=(ps ax | grep -q "$1" | grep -v "grep" )
-    return EXISTS
+    if [ ps axocomm | grep -vq "grep" | grep -q "$1" -eq 0 ] ; then
+        return 1
+    else
+        return 0
+    fi
 }
 
 #
@@ -94,9 +97,9 @@ function check_process_exists()
 function check_file_exists()
 {
     if [[ -f "$1" ]] ; then
-        return true
+        return 1
     else
-        return false
+        return 0
     fi
 }
 
@@ -109,7 +112,7 @@ while true ; do
 
     # File exists?
     echo -n "Checking if file $MONFILE exists: "
-    if [ ! check_file_exists $MONFILE ] ; then
+    if ( ! check_file_exists $MONFILE ) ; then
         echo "No."
         send_notify "PjCrawler event: monitor file error for $HOSTNAME" "$MAILTO" "$BODY_FILE_NOTEXISTS"
         break
@@ -119,7 +122,7 @@ while true ; do
 
     # Process Exists?
     echo -n "Checking if file $MONPROCESS exists: "
-    if [ ! check_process_exists $MONPROCESS ] ; then
+    if ( ! check_process_exists $MONPROCESS ) ; then
         echo "No."
         send_notify "PjCrawler event: monitor process error for $HOSTNAME" "$MAILTO" "$BODY_PROCESS_NOTEXISTS"
         break
@@ -129,7 +132,7 @@ while true ; do
 
     # Inotify
     echo -n "Checking if file $MONFILE generates inotify events: "
-    inotifywait -e $EVENTS -t $TIMEOUT $MONFILE
+    inotifywait -e $EVENTS -t $TIMEOUT $MONFILE > /dev/null 2>&1
     if [ $? -gt 0 ] ; then
         echo "No."
         send_notify "PjCrawler event: inotifywait timeout for $HOSTNAME" "$MAILTO" "$BODY_INOTIFY_TIMEOUT"
