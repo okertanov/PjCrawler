@@ -84,7 +84,8 @@ function send_notify()
 #
 function check_process_exists()
 {
-    if [ ps axocomm | grep -vq "grep" | grep -q "$1" -eq 0 ] ; then
+    ps axocomm | grep -vq "grep" | grep -q "$1"
+    if [ $? -eq 0 ] ; then
         return 1
     else
         return 0
@@ -97,9 +98,9 @@ function check_process_exists()
 function check_file_exists()
 {
     if [[ -f "$1" ]] ; then
-        return 1
-    else
         return 0
+    else
+        return 1
     fi
 }
 
@@ -143,5 +144,4 @@ while true ; do
 done
 
 echo "$0: Stopped."
-return 0
 
