@@ -47,36 +47,39 @@ MONPROCESS=phantomjs
 #
 # Mail body 1
 #
-BODY_INOTIFY_TIMEOUT=<<EOM
+BODY_INOTIFY_TIMEOUT=$(cat <<EOM
 Host: $HOSTNAME:
 Inotify wait timeout events: $EVENTS
 PjCrawler needs your love!
 EOM
+)
 
 #
 # Mail body 2
 #
-BODY_FILE_NOTEXISTS=<<EOM
+BODY_FILE_NOTEXISTS=$(cat <<EOM
 Host: $HOSTNAME:
 Monitor file not exists: $MONFILE
 PjCrawler needs your love!
 EOM
+)
 
 #
 # Mail body 3
 #
-BODY_PROCESS_NOTEXISTS=<<EOM
+BODY_PROCESS_NOTEXISTS=$(cat <<EOM
 Host: $HOSTNAME:
 Monitor process not exists: $MONFILE
 PjCrawler needs your love!
 EOM
+)
 
 #
 # Send notification mail
 #
 function send_notify()
 {
-    mail -s $1 $2 $3
+    echo "$3" | mail -s "$1" -t "$2"
 }
 
 #
@@ -137,6 +140,9 @@ while true ; do
     if [ $? -gt 0 ] ; then
         echo "No."
         send_notify "PjCrawler event: inotifywait timeout for $HOSTNAME" "$MAILTO" "$BODY_INOTIFY_TIMEOUT"
+        echo -n "Restarting $MONPROCESS... "
+        killall $MONPROCESS
+        echo "Done."
     else
         echo "Yes."
     fi
