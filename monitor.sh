@@ -23,7 +23,7 @@ EVENTS=modify
 #
 # Timeout in seconds
 #
-TIMEOUT=2
+TIMEOUT=120
 
 #
 # Cmd-line sanity
@@ -42,13 +42,14 @@ MONFILE=$1
 #
 # Wait loop
 #
-while inotifywait -e $EVENTS -t $TIMEOUT $MONFILE; do
-    if [ $? -eq 3 ] ; then
-        mail -s "PjCrawler event: inotifywait timeout for $HOSTNAME" $MAILTO <<EOM
-            Host: $HOSTNAME:
-            Inotifywait timeout events: $EVENTS
-            PjCrawler needs your love!
-        EOM
+while true ; do
+    inotifywait -e $EVENTS -t $TIMEOUT $MONFILE
+    if [ $? -gt 0 ] ; then
+mail -s "PjCrawler event: inotifywait timeout for $HOSTNAME" $MAILTO <<EOM
+Host: $HOSTNAME:
+Inotifywait timeout events: $EVENTS
+PjCrawler needs your love!
+EOM
     fi
 done
 
