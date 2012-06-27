@@ -87,11 +87,10 @@ function send_notify()
 #
 function check_process_exists()
 {
-    ps axocomm | grep -vq "grep" | grep -q "$1"
-    if [ $? -eq 0 ] ; then
-        return 0
-    else
+    if [ `ps axocomm | grep -vq "grep" | grep -q "$1"` ] ; then
         return 1
+    else
+        return 0
     fi
 }
 
