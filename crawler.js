@@ -482,7 +482,7 @@ function Main()
 
         // Start the Crawler asyncroniously
         Start(files, function(){ Before() }, function(){ After() });
-        LOG(logPrefix + 'System started (ver.1.2)');
+        LOG(logPrefix + 'System started (ver.1.3)');
     }
     catch(e)
     {
