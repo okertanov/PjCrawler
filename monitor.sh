@@ -139,6 +139,7 @@ while true ; do
         send_notify "PjCrawler event: inotifywait timeout for $HOSTNAME" "$MAILTO" "$BODY_INOTIFY_TIMEOUT"
         echo -n "Restarting $MONPROCESS... "
         killall $MONPROCESS
+        sleep 10
         echo "Done."
     else
         echo "Yes."
