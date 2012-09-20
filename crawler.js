@@ -22,8 +22,8 @@ const   LOG = function() { console.log.apply(console, Array.prototype.slice.call
         ERR = function() { console.error.apply(console, Array.prototype.slice.call(arguments)); };
 
 const   DEF_WORKERS = 3;
-const   DEF_PAGE_TIMEOUT  = 60000;
-const   DEF_END_TIMEOUT   = 5000;
+const   DEF_PAGE_TIMEOUT  = 25000; // 25 sec
+const   DEF_END_TIMEOUT   = 5000;  // 5 sec
 const   DEF_NEXT_MINDELAY = 35;
 
 // Functions
